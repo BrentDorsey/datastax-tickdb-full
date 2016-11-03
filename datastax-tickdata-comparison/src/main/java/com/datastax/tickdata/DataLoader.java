@@ -16,7 +16,7 @@ import au.com.bytecode.opencsv.CSVReader;
 public class DataLoader {
 
 	private static Logger logger = LoggerFactory.getLogger(DataLoader.class);
-	
+
 	private static final CharSequence EXCHANGEDATA = "small_exchangedata";
 
 	public DataLoader(){}
@@ -26,7 +26,11 @@ public class DataLoader {
 		List<String> allExchangeSymbols = new ArrayList<String>();
 
 		// Process all the files from the csv directory
-		File cvsDir = new File(".", "src/main/resources/csv");
+		//File cvsDir = new File(".", "src/main/resources/csv");
+		ClassLoader classLoader = getClass().getClassLoader();
+		File cvsDir = new File(classLoader.getResource("csv/").getFile());
+
+		//File cvsDir = new File(".", "/Users/bdorsey/Documents/github/DataStaxCodeSamples/datastax-tickdb-full/datastax-tickdata-comparison/src/main/resources/csv");
 
 		File[] files = cvsDir.listFiles(new FileFilter() {
 			public boolean accept(File file) {

@@ -10,10 +10,10 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datastax.timeseries.model.TimeSeries;
+
 import cern.colt.list.DoubleArrayList;
 import cern.colt.list.LongArrayList;
-
-import com.datastax.timeseries.model.TimeSeries;
 
 public class TickGenerator implements Iterator<TimeSeries> {
 
@@ -36,19 +36,19 @@ public class TickGenerator implements Iterator<TimeSeries> {
 		}else{
 			logger.info("Comparing : " + this.startDateTime + " - " + new DateTime());
 			if (this.startDateTime.getMillis() < new DateTime().getMillis()){
-				
+
 				startDateTime = startDateTime.plusDays(1);
 				counter = 0;
-				
+
 				try {
 					Thread.sleep(2000);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				
+
 				return true;
-			}else{			
+			}else{
 				return false;
 			}
 		}
@@ -57,28 +57,25 @@ public class TickGenerator implements Iterator<TimeSeries> {
 	@Override
 	public TimeSeries next() {
 		String exchangeSymbol = exchangeSymbols.get(counter);
-
 		DateTime today = startDateTime.withHourOfDay(8).withMinuteOfHour(0).withSecondOfMinute(0);
 		DateTime endTime = startDateTime.withHourOfDay(16).withMinuteOfHour(30).withSecondOfMinute(0);
-
 		LongArrayList dates = new LongArrayList();
 		DoubleArrayList prices = new DoubleArrayList();
 		double startPrice = exchangeSymbol.hashCode() % 1000;
 
 		while (today.isBefore(endTime.getMillis())) {
-
 			dates.add(today.getMillis());
 			prices.add(startPrice);
-
 			startPrice = this.createRandomValue(startPrice);
-
 			today = today.plusMillis(new Double(Math.random() * 500).intValue() + 1);
+			tickCounter.incrementAndGet();
 		}
 		counter++;
 
 		dates.trimToSize();
 		prices.trimToSize();
-
+		//tickCounter.addAndGet(dates.elements().length);
+		//logger.info(String.format("TimeSeries.dates.elements().length=%s", dates.elements().length));
 		return new TimeSeries(exchangeSymbol + "-" + formatter.format(today.toDate()), dates.elements(),
 				prices.elements());
 	}
@@ -89,7 +86,6 @@ public class TickGenerator implements Iterator<TimeSeries> {
 	}
 
 	private double createRandomValue(double lastValue) {
-
 		double up = Math.random() * 2;
 		double percentMove = (Math.random() * 1.0) / 100;
 
@@ -99,8 +95,7 @@ public class TickGenerator implements Iterator<TimeSeries> {
 			lastValue += percentMove;
 		}
 
-		tickCounter.incrementAndGet();
-
+		//tickCounter.incrementAndGet();
 		return lastValue;
 	}
 
