@@ -1,5 +1,5 @@
-Stock Ticker Data example
-=========================
+Stock Ticker Price Time Series Data
+===========================================
 
 This is an example of using Cassandra as a stock ticker price data store for financial market data.  This example demonstrates 2 methods for storing time series data (binary blobs vs clustering columns) and demonstrates using blobs to improve performance by retrieving the entire time series data from a single row with very little scanning.
 
@@ -13,7 +13,7 @@ The queries that we want to be able to run are
 
 ## Data
 
-The data is generated from a stock tick generator which uses a csv file to create random values from AMEX, NYSE and NASDAQ.
+The data is generated from a stock ticker generator which uses a csv file to create random values from AMEX, NYSE and NASDAQ.
 
 ## Running the demo
 
@@ -33,21 +33,21 @@ This demo uses quite a lot of memory so it is worth setting the MAVEN_OPTS to ru
  - Create CASSANDRA_HOME environment variable
     - `vi ~/.bash_profile` (open your bash profile in vi)
     - `i` (enable insert mode)
-    - Create environment variable and it to your path
+    - Create CASSANDRA_HOME environment variable and it to your path
 ```
 # ----- cassandra home
 export CASSANDRA_HOME="/Users/{your username here}/bin/cassandra"
 export PATH=$CASSANDRA_HOME/bin:$PATH
 ```
- - `esc:x` (press the escape key type :x and hit enter to save changes)
+ - `esc:x` (press the escape key and type :x and hit enter to save changes)
  - `source ~/.bash_profile` (reload .bash_profile to load the new environment variable)
  - Start Cassandra
     - `./bin/cassandra/bin/cassandra`
  - Verify Cassandra is running and you can login
-    - Cassandra is shipped with a default superuser who's user name and password are `cassandra`
-    - `cqlsh localhost -u cassandra` (start [cqlsh](http://docs.datastax.com/en/cql/3.3/cql/cql_reference/cqlsh.html?hl=cqlsh) the CQL interactive terminal)
-    - `cassandra` (password)
-    - After successfully logging in you bash prompt should be `cassandra@cqlsh>`
+    - Cassandra is shipped with a default superuser the user name and password `cassandra`
+    - `cqlsh localhost -u cassandra` (start [cqlsh](http://docs.datastax.com/en/cql/3.3/cql/cql_reference/cqlsh.html?hl=cqlsh) the CQL interactive terminal as the cassandra user)
+    - `cassandra` (enter password)
+    - After successfully logging in your bash prompt should be `cassandra@cqlsh>`
     - `exit` 
     
 See [Installing DataStax Distribution of Apache Cassandra 3.x on any Linux-based platform and Mac OS X](http://docs.datastax.com/en/cassandra/3.x/cassandra/install/installTarball.html) for more detailed information.
@@ -71,7 +71,7 @@ cd ../datastax-tickdb
 mvn package -DskipTests
 ```
 
-#### Compile cd datastax-tickdata-comparison
+#### Compile datastax-tickdata-comparison
 ```
 cd ../datastax-tickdata-comparison
 mvn clean compile
@@ -81,13 +81,10 @@ mvn clean compile
 
 The commands in this section only need to be executed one time.  Executing the commands a second time will truncate the tables used in the demo and require you to repopulate time series data for the demo.
 
-Change to the datastax-tickdata-comparison directory and execute `mvn clean compile exec:java -Dexec.mainClass="com.datastax.demo.SchemaSetup"` to create the following schema in the instance of Cassandra running on your localhost.
- - Demo storing data as blobs
-    - keyspace : datastax_tickdata_binary_demo
-    - table    : tick_data
- - Demo storing data in columns
-    - keyspace : datastax_tickdata_demo
-    - table    : tick_data
+To create the keyspaces and tables for this demo in your local instance of Cassandra change to the datastax-tickdata-comparison directory and execute 
+```
+mvn clean compile exec:java -Dexec.mainClass="com.datastax.demo.SchemaSetup"
+``` 
 
 #### Binary Demo
 ```
@@ -113,7 +110,7 @@ The cql schema scripts are located in datastax-tickdata-comparison/src/main/reso
 
 ### Stock Ticker Price Time Series Data
 
-The commands in this section create 4 threads, 2 for the Clustering demo that stores data as columns and 2 for the Binary demo that stores data as blobs.  The first thread for each demo populates a queue with TimeSeries objects and the second thread reads the TimeSeries objects from the queue.
+The commands in this section create 4 threads, 2 for the Clustering demo and 2 for the Binary demo.  The first thread for each demo populates a queue with TimeSeries objects and the second thread reads the TimeSeries objects from the queue.
 
 Each TimeSeries object contains a stock ticker symbol along with a dates array and a values array.  Each TimeSeries object contains thousands of time series data points recording a single stock's prices throughout a day.  The individual time series data points are stored in arrays.  The dates array stores the timestamp at each point when the stock price was recorded and the values array stores the value of the stock at that point in time.
 
@@ -133,15 +130,16 @@ public class TimeSeries {
 ```
 
 Both demos perform the following actions
- - Polls the queue checking for data to process
- - Reads TimeSeries objects from the queue 
+ - Poll the queue checking for data to process
+ - Read TimeSeries objects from the queue 
 
 #### Clustering Demo (stores data as columns)
 
 The business logic for this demo performs the following actions
  - Reads a TimeSeries object from the queue
  - Loops through the arrays extracting the individual time series data points
- - Executes multiple prepared cql insert statements to persist **each time series data point as a new column** in the datastax_tickdata_demo.tick_data table
+ - Executes multiple prepared cql insert statements, one for each time series data point
+ - Persist **each time series data point as a new column** in the datastax_tickdata_demo.tick_data table
  - Note: This is the Cassandra equivalent to inserting a new row in relational database table 
  
 #### Binary Demo (stores data as blobs)
@@ -149,7 +147,8 @@ The business logic for this demo performs the following actions
 The business logic for this demo performs the following actions
  - Reads a TimeSeries object from the queue 
  - Loads the contents of each array into a ByteBuffer
- - Executes a single prepared cql insert statement to persist **the entire time series data set as a blob stored a single cell** in the datastax_tickdata_binary_demo.tick_data table
+ - Executes a single prepared cql insert statement 
+ - Persist **the entire time series data set as a blob stored a single cell** in the datastax_tickdata_binary_demo.tick_data table
 
 #### Populate Times Series Data
  
@@ -168,7 +167,7 @@ The `-DnoOfDays` parameter can be used to customize the number of days of histor
 mvn clean compile exec:java -Dexec.mainClass="com.datastax.tickdata.Main" -DcontactPoints=localhost -DnoOfDays=30
 ```
 
-To read a ticker
+To read a stock ticker time series data set
 ```
 mvn clean compile exec:java -Dexec.mainClass="com.datastax.tickdata.Read" (-Dsymbol=NASDAQ-AAPL-2015-09-16)
 ```
@@ -180,19 +179,19 @@ Start the server by running
 
 ### Querying Time Series Data
 
-Today's data
+Today's time series data
 
     http://localhost:7001/datastax-tickdb/rest/tickdb/get/NASDAQ/AAPL
 
-To and From dates
+Time series data between two dates
 
     http://localhost:7001/datastax-tickdb/rest/tickdb/get/bydatetime/NASDAQ/AAPL/20150914000000/20150917000000
 
-To and from dates broken into minute chunks
+Time series data between two dates broken into minute chunks
 
     http://localhost:7001/datastax-tickdb/rest/tickdb/get/bydatetime/NASDAQ/AAPL/20150914000000/20150917000000/MINUTE
 
-To and from dates broken into minute chunks and shown as candlesticks
+Time series data between two dates broken into minute chunks and shown as candlesticks
 
     http://localhost:7001/datastax-tickdb/rest/tickdb/get/candlesticks/NASDAQ/AAPL/20150914000000/20150917000000/MINUTE_5
 
